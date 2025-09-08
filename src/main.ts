@@ -1,8 +1,9 @@
-import {vec3} from 'gl-matrix';
+import {vec3, vec4} from 'gl-matrix';
 const Stats = require('stats-js');
 import * as DAT from 'dat.gui';
 import Icosphere from './geometry/Icosphere';
 import Square from './geometry/Square';
+import Cube from './geometry/Cube';
 import OpenGLRenderer from './rendering/gl/OpenGLRenderer';
 import Camera from './Camera';
 import {setGL} from './globals';
@@ -12,18 +13,34 @@ import ShaderProgram, {Shader} from './rendering/gl/ShaderProgram';
 // This will be referred to by dat.GUI's functions that add GUI elements.
 const controls = {
   tesselations: 5,
+  Color: '#ff0000',
   'Load Scene': loadScene, // A function pointer, essentially
 };
 
 let icosphere: Icosphere;
 let square: Square;
+let cube: Cube;
 let prevTesselations: number = 5;
+let prevColor: vec4 = vec4.fromValues(1, 0, 0, 1);
+
+function hextoVec4(hexVal: string): vec4 {
+  let truncColor: string = hexVal.slice(1);
+
+  let r: number = parseInt((truncColor.charAt(0) + truncColor.charAt(1)), 16) / 255.0;
+  let g: number = parseInt((truncColor.charAt(2)) + truncColor.charAt(3), 16) / 255.0;
+  let b: number = parseInt((truncColor.charAt(4) + truncColor.charAt(5)), 16) / 255.0;
+
+  let col: vec4 = vec4.fromValues(r, g, b, 1);
+  return col;
+}
 
 function loadScene() {
-  icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
-  icosphere.create();
-  square = new Square(vec3.fromValues(0, 0, 0));
-  square.create();
+  //icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, controls.tesselations);
+  //icosphere.create();
+  //square = new Square(vec3.fromValues(0, 0, 0));
+  //square.create();
+  cube = new Cube(vec3.fromValues(0, 0, 0))
+  cube.create();
 }
 
 function main() {
@@ -39,6 +56,7 @@ function main() {
   const gui = new DAT.GUI();
   gui.add(controls, 'tesselations', 0, 8).step(1);
   gui.add(controls, 'Load Scene');
+  gui.addColor(controls, 'Color');
 
   // get canvas and webgl context
   const canvas = <HTMLCanvasElement> document.getElementById('canvas');
@@ -64,20 +82,32 @@ function main() {
     new Shader(gl.FRAGMENT_SHADER, require('./shaders/lambert-frag.glsl')),
   ]);
 
+  const FBMTrig = new ShaderProgram([
+    new Shader(gl.VERTEX_SHADER, require('./shaders/FBMTrig-vert.glsl')),
+    new Shader(gl.FRAGMENT_SHADER, require('./shaders/FBMTrig-frag.glsl'))
+  ]);
+
   // This function will be called every frame
   function tick() {
     camera.update();
     stats.begin();
     gl.viewport(0, 0, window.innerWidth, window.innerHeight);
     renderer.clear();
+
+    /*
     if(controls.tesselations != prevTesselations)
     {
       prevTesselations = controls.tesselations;
       icosphere = new Icosphere(vec3.fromValues(0, 0, 0), 1, prevTesselations);
       icosphere.create();
     }
-    renderer.render(camera, lambert, [
-      icosphere,
+    */
+
+    let sliderColor: vec4 = hextoVec4(controls.Color);
+
+    renderer.render(camera, FBMTrig, sliderColor, [
+      //icosphere,
+      cube
       // square,
     ]);
     stats.end();
